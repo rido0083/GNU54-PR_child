@@ -26,25 +26,11 @@ if (!defined('_GNUBOARD_')) exit; // 개별 페이지 접근 불가
 //필요한 데이터베이스를 생성한다.
 include_once(PR_THEME_CHILD . '/lib/pr_install_lib.php');
 
+
 //기본 config를 할당
-$cfsql = " select exp_value from ".PR_CONFIG_EXP." where exp_type = 'pr_config' ";
+$cfsql = " select exp_value from ".PR_CONFIG_EXP." where exp_key = 'pr_config' ";
 $cfrow = sql_fetch($cfsql);
-$pr['config'] = pr_json_decode($cfrow['exp_value']);
-
-/*
-$pr['theme_bell_ch'] = 'true';                              //알림기능을 사용여부
-$pr['theme_at_ch'] = 'true';                                //@.js를 이용한 멘션기능을 사용여부
-$pr['theme_frend_ch'] = 'true';                             //친구기능 사용여부
-*/
-
-//현재 디렉토리와 파일명을 반환 합니다.
-$pr_php_self = explode("/", $_SERVER['PHP_SELF']);
-$pr_file_cnt = count($pr_php_self) - 1;
-$pr_dir_cnt = count($pr_php_self) - 2;
-$pr_this_page = $pr_php_self[$pr_file_cnt];
-$pr_this_dir = $pr_php_self[$pr_dir_cnt];
-
-$pr_path = '/';
+$pr_config = pr_json_decode($cfrow['exp_value']);
 
 switch ($pr_this_dir) {
 	case 'adm':	//관리자를 대체합니다.
@@ -59,16 +45,6 @@ switch ($pr_this_dir) {
 		break;
 }
 
-//알림문구를 배열로 정리
-$pr['bell_message'] = array(
-		'at_comment' => '[bo_title]에 댓글[bell_subject]에 회원님을 언급하셨습니다.'  ,
-		'at_write' => '[bo_title]에 글[bell_subject]에 회원님을 언급하셨습니다.'  ,
-		'memo' => '[bell_subject]의 쪽지가 도착했습니다.'  ,
-		'comment' => '[bo_title]에 [bell_subject]댓글을 남기셨습니다.'  ,
-		'good' => '[bo_title]의 [bell_subject]을 추천하셨습니다.'  ,
-		'bed' => '[bo_title]의 [bell_subject]을 비추천하셨습니다.'  ,
-		'friend' => '[friend][bo_title]에 글[bell_subject]를 작성하셨습니다.'
-);
 
 //해당 플러그인에 필요한 디비가 있는지를 체크후 없다면 디비생성
 function pr_exist_table($table_name) {
@@ -81,22 +57,21 @@ function pr_exist_table($table_name) {
 	return $return;
 }
 
+//해당일이 글쓴날에서 얼마나 지났는지를 리턴
+function pr_date_return ($datetime) {
+	//그누보드 익명닉네임 이 알려주신 팁
+	$_timestamp = array(86400*365, 86400*31, 86400, 3600, 60, 1);
+	$_timetitle = array("년 전", "개월 전", "일 전", "시간 전", "분 전", "초 전");
 
-//해당일수 이상의 알림은 자동삭제
-function pr_bell_del ($belldel_day) {
-	global $pr;
-	if ($del_day != 0) { // 해당일이 0이면 자동삭제 기능을 사용하지 않음
-		$del_time =  date("Y-m-d", strtotime("-{$del_day}day")).' 00:00:00';
-		$sql = "
-			delete from {$pr['pr_table_exp']} where msg_wdate < '{$del_time}' and msg_check != 'd'
-		";
-		@sql_query($sql);
-	}
-} // srd_pushmsg_del
+	$d = strtotime($datetime);
+
+	foreach($_timestamp as $key => $value)
+	if($d <= time() - $value) return (int)((time() - $d)/$_timestamp[$key]).$_timetitle[$key];
+} // emd srd_date_return
 
 //json 관련 버전관련이슈가 생길지 몰라 생성
 function pr_json_encode($in_array) {
-	return json_encode ($in_array);
+	return json_encode ($in_array , JSON_UNESCAPED_UNICODE);
 }
 function pr_json_decode($in_array) {
 	$in_array = json_decode ($in_array);
@@ -105,54 +80,100 @@ function pr_json_decode($in_array) {
 	return $in_array;
 }
 
-//알림을 입력
-function rd_bell_insert ($from_member , $to_member , $subj , $msg_link , $bell_type ) {
-	global $opr;
-	//G5_TIME_YMDHIS;
-	$sql_insert = "
-		insert into {$pr['pr_table_exp']}  set
-	";
-	//@sql_query($sql_insert);
-}
 
-//알림 읽음 처리
-function pr_bell_update ($bell_id) {
+//해당 게시물의 정보틀 반환한다.
+function pr_get_write($bo_table , $wr_id) {
+	global $g5;
+	$sql = " select * from ".$g5['write_prefix'] . $bo_table." where wr_id = {$wr_id}";
+	$get_write = sql_fetch($sql);
+	$get_write['href'] = get_pretty_url($bo_table, $get_write['wr_id'], '');
+	return $get_write;
 }
 
 
-/*
-# 그누보드에서 사용되는 함수지만 추가적인 기능이 필요하거나 변경이 필요한 경우 복사됨
-*/
-//그누보드에서 복사된 함수
-function pr_member_profile_img($mb_id=''){		// 이미지 url만을 치환받기위해 복사됨
-    global $member;
-    static $no_profile_cache = '';
-    static $member_cache = array();
-    $src = '';
-    if( $mb_id ){
-        if( isset($member_cache[$mb_id]) ){
-            $src = $member_cache[$mb_id];
-        } else {
-            $member_img = G5_DATA_PATH.'/member_image/'.substr($mb_id,0,2).'/'.$mb_id.'.gif';
-            if (is_file($member_img)) {
-                $member_cache[$mb_id] = $src = str_replace(G5_DATA_PATH, G5_DATA_URL, $member_img);
-            }
-        }
-    }
-    if( !$src ){
-        if( !empty($no_profile_cache) ){
-            $src = $no_profile_cache;
-        } else {
-            // 프로필 이미지가 없을때 기본 이미지
-            $no_profile_img = (defined('G5_THEME_NO_PROFILE_IMG') && G5_THEME_NO_PROFILE_IMG) ? G5_THEME_NO_PROFILE_IMG : G5_NO_PROFILE_IMG;
-            $tmp = array();
-            preg_match( '/src="([^"]*)"/i', $foo, $tmp );
-            $no_profile_cache = $src = isset($tmp[1]) ? $tmp[1] : G5_IMG_URL.'/no_profile.gif';
-        }
-    }
-    return $src;
+//해당 회원의 팔로잉 수
+function pr_follow_count () {
+	global $member;
 }
-//그누보드에서 복사된 함수 end
+
+
+//해당 회원이 차단한 회원 수
+function pr_block_count () {
+	global $member;
+}
+
 
 $pr_child_file = PR_THEME_CHILD.$pr_path.$pr_this_page;
+$is_file_child = file_exists($pr_child_file);
+
+
+//head.php를 호출하지 않는 update페이지
+//$pr_this_page
+$pr_updatepage_ar = array();
+$pr_updatepage_ar = array(
+	'contentformupdate.php'
+	,'.php'
+);
+if (in_array($pr_this_page , $pr_updatepage_ar)) {
+	if ($is_file_child) {
+		include_once($pr_child_file);
+		//exit;
+	}
+}
+// add_event('prhead','pr_addhead',20,0);
+// function pr_addhead() {
+// 	global $is_file_child;
+// 	if ($is_file_child) {
+// 		include_once($pr_child_file);
+// 		//exit;
+// 	}
+// }
+
+//shotcode를 반환한다.
+add_event('tail_sub','pr_shotcode',20,0);
+function pr_shotcode() {
+	//shocode 관련 js를 불러온다. (아직은 테스트중..)
+	//function add_javascript($javascript, $order=0)
+	// add_javascript(PR_AJAX_JS.'/pr_common.js', 0);
+?>
+	<script>
+	$(document).ready(function(){
+
+	  var html = $("#bo_v_atc").html();
+	  if ($("#bo_v_atc").lenth > 0 ) {
+	    html = html.split("[shotcode").join("<span class='pr_shotcode' ");
+	    html = html.split("/shotcode]").join("</span>");
+	    $("#bo_v_atc").html(html);
+
+	     $(".pr_shotcode").each(function(){
+	      var code_name = $(this).data("name");
+	      var code_array = $(this).data("array");
+	      $(this).html(code_name);
+	     });
+	  }
+
+	  $(".shotcode").each(function(index){
+	    var code_name = $(this).data("name");
+	    var code_array = $(this).data("array");
+
+	    var request = $.ajax({
+	      url: "<?php echo PR_AJAX_URL?>/pr_shotcode.php",
+	      method: "POST",
+	      data: {
+	        pr_shortcode : 'true'
+	        , code_name : code_name
+	        , code_array : code_array
+	      },
+	      dataType: "html"
+	    });
+
+	    request.done(function( data ) {
+	      $('.shotcode').eq(index).html( data );
+	    });
+	  });
+	});
+
+	</script>
+<?php
+}
 ?>

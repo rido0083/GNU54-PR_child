@@ -69,17 +69,17 @@ var char_max = parseInt(<?php echo $comment_max ?>); // 최대
         <input type="hidden" id="secret_comment_<?php echo $comment_id ?>" value="<?php echo strstr($list[$i]['wr_option'],"secret") ?>">
         <textarea id="save_comment_<?php echo $comment_id ?>" style="display:none"><?php echo get_text($list[$i]['content1'], 0) ?></textarea>
 
-        <?php if ($list[$i]['is_edit'] || $list[$i]['is_del']) {  ?>
+
         <div class="bo_vl_opt">
             <button class="cmt_opt"><span class="sound_only">댓글옵션</span><i class="fa fa-ellipsis-v" aria-hidden="true"></i></button>
 			<ul class="bo_vl_act">
+						<?php if ($list[$i]['is_edit'] || $list[$i]['is_del']) {  ?>
                 <?php if ($list[$i]['is_edit']) { ?><li><a href="<?php echo $c_edit_href; ?>" onclick="comment_box('<?php echo $comment_id ?>', 'cu'); return false;">수정 <i class="fa fa-pencil-square-o" aria-hidden="true"></i></a></li><?php } ?>
                 <?php if ($list[$i]['is_del']) { ?><li><a href="<?php echo $list[$i]['del_link']; ?>" onclick="return comment_delete();">삭제 <i class="far fa-trash-alt"></i></a></li><?php } ?>
+						<?php } ?>
 								<?php if ($list[$i]['is_reply']) { ?><li><a href="<?php echo $c_reply_href; ?>" onclick="comment_box('<?php echo $comment_id ?>', 'c'); return false;" >답변 <i class="far fa-comment-dots"></i></a></li><?php } ?>
             </ul>
         </div>
-        <?php } ?>
-
     </article>
     <?php } ?>
 
@@ -351,3 +351,11 @@ $(function() {
 });
 </script>
 <?php } ?>
+
+<script>
+// 댓글옵션 레이어 문제
+$(".cmt_opt").click(function(){
+  $('.bo_vl_act').css('zIndex','0');
+  $(this).next('.bo_vl_act').css('zIndex','1000');
+});
+</script>

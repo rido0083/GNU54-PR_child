@@ -65,7 +65,8 @@ jQuery(function($) {
         </div>
 
         <div id="logo">
-            <a href="<?php echo G5_URL ?>#wrapper">
+            <!-- <a href="<?php echo G5_URL ?>#wrapper"> -->
+            <a href="<?php echo G5_URL ?>">
             	<!-- <img src="<?php echo G5_IMG_URL ?>/logo.png" alt="<?php echo $config['cf_title']; ?>"> -->
               <span style="color: #fff; font-size: 20px">
                 <?php echo $config['cf_title']; ?>
@@ -222,6 +223,20 @@ $(function () {
 		    		<?php echo get_head_title($g5['title']); ?>
 		    	</h2>
 		    	<?php } ?>
+
           <?php
-            @include_once($pr_child_file);    
-          ?>
+        	if ($is_admin) {
+        		$arr = get_defined_vars();
+        		foreach ( $arr as $vName => $value )
+         		{
+        		 // echo $vName." : ".$value."<br>";
+         		}
+        	}
+        	?>
+<?php
+// pr-child
+if ($is_file_child) {
+	include_once($pr_child_file);
+}
+// pr-child
+?>
